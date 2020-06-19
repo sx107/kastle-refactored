@@ -1,5 +1,5 @@
 # kastle-refactored
-Refactored code of the original Bastl instruments Kastle.
+Refactored code of the original Bastl instruments Kastle synth firmware.
 
 
 This is a refactored vesrion of the original firmware for the @bastl-instruments Kastle. I will also upload here my experiments with bastl kastle firmware.
