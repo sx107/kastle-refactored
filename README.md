@@ -17,5 +17,9 @@ See .ino file comments.
 
 - [ ] LFO code refactoring
 - [ ] Further VCO code bugfixes, making it easier to develop custom synths
+- [ ] Custom VCO firmwares refactoring, developing some of my own
 - [ ] Custom PCB gerbers
 - [ ] Probably a 3d-printed case
+
+## Does it sound exactly the same?
+Almost. I did not modify the synthesis code much, though for some reason this firmware does sound a tad bit different from the original one. 
