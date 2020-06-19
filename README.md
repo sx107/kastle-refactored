@@ -13,6 +13,8 @@ Arduino and [AttinyCore](https://github.com/SpenceKonde/ATTinyCore) were used in
 - VCO1.5_Refactoring - refactored version of the original Kastle 1.5 VCO
 
 ## To be done
+See .ino file comments.
+
 - [ ] LFO code refactoring
 - [ ] Further VCO code bugfixes, making it easier to develop custom synths
 - [ ] Custom PCB gerbers
