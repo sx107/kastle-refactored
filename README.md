@@ -9,10 +9,10 @@ License: CC-BY-SA
 
 Arduino and [AttinyCore](https://github.com/SpenceKonde/ATTinyCore) were used in making this project.
 
-## Description
+### Description
 - VCO1.5_Refactoring - refactored version of the original Kastle 1.5 VCO
 
-## To be done
+### To be done
 See .ino file comments.
 
 - [ ] LFO code refactoring
@@ -21,5 +21,5 @@ See .ino file comments.
 - [ ] Custom PCB gerbers
 - [ ] Probably a 3d-printed case
 
-## Does it sound exactly the same?
+### Does it sound exactly the same?
 Almost. I did not modify the synthesis code much, though for some reason this firmware does sound a tad bit different from the original one. 
