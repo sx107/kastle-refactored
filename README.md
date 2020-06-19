@@ -2,7 +2,7 @@
 Refactored code of the original Bastl instruments Kastle synth firmware.
 
 
-This is a refactored vesrion of the original firmware for the @bastl-instruments Kastle. I will also upload here my experiments with bastl kastle firmware.
+This is a refactored vesrion of the original firmware for the @bastl-instruments Kastle. I will also upload here my experiments with bastl kastle firmware (and schematics, probably).
 
 The purpose of this project is to make original firmware code understandable, to make it easier to develop custom firmwares for the Kastle synth and make this amazing simple platform more accessible.
 
