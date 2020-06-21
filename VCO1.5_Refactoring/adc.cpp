@@ -33,10 +33,12 @@ ISR(ADC_vect) {
 
 #else
 
-ISR(ADC_vect) {
+ISR(ADC_vect) {  
   const uint8_t analogChannelSequence[6]={0,1,0,2,0,3};
   const uint8_t analogToDigitalPinMapping[4]={PORTB5,PORTB2,PORTB4,PORTB3};
 
+  // Easter egg timer
+  easterEgg_timer++;
 
   if(skipConversion) {
     if(mode != MODE_NOISE) {

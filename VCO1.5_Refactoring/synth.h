@@ -10,6 +10,7 @@
 #define MODE_TAH 2 //aka track & hold modulation (downsampling with T&H)
 
 extern volatile uint8_t mode;
+extern volatile uint8_t easterEgg_timer;
 
 void synthesis();
 void synthesis_init();
@@ -19,5 +20,6 @@ void modeSelect();
 // Executed in the ADC interrupt, imho it's not the best solution:
 // these could be relatively long functions due to multiplications
 volatile void parameterModified(uint8_t parameterId, uint16_t parameterValue);
+void synthesis_easterEggInit();
 
 #endif

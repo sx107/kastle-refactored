@@ -4,10 +4,16 @@
 #include <avr/interrupt.h>
 #include <stdlib.h>
 #include <avr/io.h>
+#include <avr/pgmspace.h>
 
 //Thresholds for mode selection
 #define LOW_THRES 150
 #define HIGH_THRES 162
+
+// Set this define if you want the easter egg mode to be triggered only by knobs (mode port is ignored)
+// #define NOMODE_EASTER_EGG
+// Set this define if you want the easter egg to check only the WAVESHAPE knob
+// #define WS_EASTER_EGG
 
 // Sine wavetable in progmem and RAM
 const volatile char PROGMEM sinetable[128] = {
@@ -31,6 +37,11 @@ volatile uint16_t phase5 = 0, frequency5 = 0;
 volatile uint16_t phase6 = 0, frequency6 = 0;
 volatile uint8_t  phase3 = 0;
 
+// Easter egg switch: volatile, because used in the ISR
+volatile bool easterEgg_mode = false;
+// Easter egg timer, increased in the ADC ISR
+volatile uint8_t easterEgg_timer = 0;
+
 //Synthesis mode
 volatile uint8_t mode = MODE_TAH;
 
@@ -48,7 +59,11 @@ ISR(TIMER1_COMPA_vect)
     // Frequency2 - modulator
     // Waveshape - FM amount
     uint8_t phs=(phase1+(analogValues[ADC_WS2]*wavetable[phase2 >> 8])) >> 6;
-    sample1 = wavetable[phs]; // If I put this code into synthesis(), the output becomes too noisy
+    sample1 = wavetable[phs];
+    if(easterEgg_mode) {
+      uint8_t phs90 = phs + 64; // To be sure that phase value will, in fact, wrap around
+      sample2 = wavetable[phs90];
+    }
   } else {
     phase3 = phase2 >> 5; // No idea why this was done in the ISR() before
     phase6 += frequency6;
@@ -61,7 +76,8 @@ ISR(TIMER1_COMPA_vect)
 
 void synthesis() {
   static volatile uint8_t saw = 0, lastSaw = 0;
-  if (mode == MODE_FM) {
+  if (mode == MODE_FM)
+  {
       // == FM MODE OUT2 == //
       lastSaw = saw;                                                                  
       saw = ( ( (255 - (phase1 >> 8) ) * ( analogValues[ADC_WS2] ) ) >> 8);           // Saw at frequency1, ADC_WS2 modulates the volume
@@ -70,24 +86,34 @@ void synthesis() {
       if (lastSaw < saw) {phase4 = 64 << 8;}                                          // If saw overflows, hard-sync frequency4
       uint8_t s = abs(saw - lastSaw); if(s > 3) {phase5 += s << 8;}                   // Soft-sync frequency5?
   }
-  
-  else if (mode == MODE_TAH) {
+  else if (mode == MODE_TAH)
+  {
       // == T&H MODE OUT1 == //
       // S&H frequency1, frequency2 is T&H frequency, waveshape is T&H amount
-      if ((phase2 >> 8)>analogValues[ADC_WS2]) {sample1 = (wavetable[phase1 >> 8] );} 
+      uint8_t phs = phase1 >> 8;
+      if ((phase2 >> 8)>analogValues[ADC_WS2]) {
+        sample1 = (wavetable[phs]);
+        if(easterEgg_mode) {
+            uint8_t phs90 = phs + 64;
+            sample2 = wavetable[phs90]; 
+        }
+      } 
       // == T&H MODE OUT2 == //
       // Summ of freq2, freq4, freq5, freq6
-      sample2 = (wavetable[phase2 >>8]+ wavetable[phase4 >>8] + wavetable[phase5 >>8]+ wavetable[phase6 >>8])>>2;
+      if(!easterEgg_mode) {
+        sample2 = (wavetable[phase2 >>8]+ wavetable[phase4 >>8] + wavetable[phase5 >>8]+ wavetable[phase6 >>8])>>2;
+      }
       
-  } else if (mode == MODE_NOISE) {
-    // == NOISE MODE OUT1 == //
-    if((phase1>>2)>=(analogValues[ADC_WS2]-100)<<5) {phase1 = 0;} // Essentially sample length is controlled by WS2 (waveshape)
-    uint8_t smp = (char)pgm_read_byte_near(sampleTable+(phase1>>2)); //Read the noise sample (and anything beneath it?)
-    sample1 = (smp*wavetable[phase2>>8])>>8; //Modify the sample by AM-modulating it with freq2
-    // == NOISE MODE OUT2 == //
-    
-    sample2 = (wavetable[phase3+(phase1>>8)]); // Pseudo-noise: sin(phase >> 5 + phase >> 8) and phase is "cut" at some point (sample length)
-                                                //The phase will, though, go past the wavetable and grab some noise
+  }
+  else if (mode == MODE_NOISE)
+  {
+      // == NOISE MODE OUT1 == //
+      if((phase1>>2)>=(analogValues[ADC_WS2]-100)<<5) {phase1 = 0;} // Essentially sample length is controlled by WS2 (waveshape)
+      uint8_t smp = (char)pgm_read_byte_near(sampleTable+(phase1>>2)); //Read the noise sample (and anything beneath it?)
+      sample1 = (smp*wavetable[phase2>>8])>>8; //Modify the sample by AM-modulating it with freq2
+      // == NOISE MODE OUT2 == //
+      sample2 = (wavetable[phase3+(phase1>>8)]); // Pseudo-noise: sin(phase >> 5 + phase >> 8) and phase is "cut" at some point (sample length)
+                                                  //The phase will, though, go past the wavetable and grab some noise
   }
 }
 
@@ -130,6 +156,28 @@ void synthesis_init() {
   for (int i = 129; i < 256; ++i) {
     wavetable[i] = wavetable[256 - i] ;
   }
+}
+
+void synthesis_easterEggInit() {
+  // Run synthesis while we are waiting
+  // In the original code it's while(...) {loop();}
+  // But due to refactoring here it's impossible, so...
+  while(easterEgg_timer < 12) {
+    synthesis();
+    modeSelect();
+  }
+
+  //Easter mode check
+  easterEgg_mode = true;
+  #ifndef NOMODE_EASTER_EGG
+  if(analogValues[0] < HIGH_THRES) {easterEgg_mode = false;}
+  #endif
+
+  #ifdef WS_EASTER_EGG
+  if(analogValues[ADC_WS2] < 200) {easterEgg_mode = false;}
+  #else
+  for(uint8_t i = 1; i < 4; i++) {if(analogValues[i] < 200) {easterEgg_mode = false;}}
+  #endif
 }
 
 void modeSelect() {
