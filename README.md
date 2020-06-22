@@ -26,7 +26,7 @@ The cheapest possible programmer you can buy is [USBAsp](https://www.fischl.de/u
 ### To be done
 See .ino file comments.
 
-- [ ] LFO code refactoring
+- [x] LFO code refactoring (TODO: add DualStep firmware)
 - [ ] Further VCO code bugfixes, making it easier to develop custom synths
 - [ ] Custom VCO firmwares refactoring, developing some of my own
 - [ ] Custom PCB gerbers
