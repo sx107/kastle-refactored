@@ -34,6 +34,6 @@ inline void timers_init() {
                                   //Final Timer1 config: reset on OCR1C compare
                                   //Interrupt on OCR1A compare
                                   //Frequency: 4MHz / 256 = 15625 Hz
-}								 
+}
 
 #endif

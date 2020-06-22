@@ -18,10 +18,8 @@
   Millis/micros: disabled (we don't use those)
   Timer1 clock: 32 MHz (though I don't know if it changes anything, since the timer clock source is set in timer initialization)
   
-  LTO: !!! IMPORTANT !!!
-  Apparently LTO can break the code (mostly because of ISRs, which, as much as the optimizator is concerned,
-  are never called, and variables shared between ISR and other functions are technically undefined behaviour)
-  I've
+  LTO: Up to you, I'd set it to enabled. It can sometimes break the code, though,
+  but I hope that I've made everything that's needed volatile
 
   == Notes ==
 
