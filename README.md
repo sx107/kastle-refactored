@@ -12,7 +12,8 @@ License: CC-BY-SA
 
 Arduino and [AttinyCore](https://github.com/SpenceKonde/ATTinyCore) were used in making this project.
 
-### Description
+### Folders description
+- Hex - hex files of original Kastle VCO and LFO firmware
 - VCO1.5_Refactoring - refactored version of the original Kastle 1.5 VCO
 
 ### To be done
