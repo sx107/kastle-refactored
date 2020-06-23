@@ -1,3 +1,4 @@
+#include "settings.h"
 #include "lfo.h"
 #include "adc.h"
 #define F_CPU 8000000UL
@@ -11,10 +12,21 @@
 #define HIGH_THRES 162
 
 volatile uint8_t runglerByte = 0; // Will be set to a random value in lfo_init()
+volatile uint8_t runglerMode = 1; // 0 - connected to GND, 1 - floating, 2 - VCC
 
 void lfo_init() {
   runglerByte = random(255); // It sets the runglerByte to the same value every time, actually
 }
+
+// Detect rungler mode (much like modeSelect() in VCO code)
+
+void lfo_mode_select(uint8_t val) {
+  if(val < LOW_THRES) {runglerMode = 0;}        // GND
+  else if (val > HIGH_THRES) {runglerMode = 2;} // VCC
+  else {runglerMode = 1;}                                   // Floating
+}
+
+// LFO frequency
 
 void lfo_set_frequency(uint16_t freq) {
   // This code in the original firmware makes me sexually identify as a measure of speed
@@ -42,9 +54,35 @@ void lfo_set_frequency(uint16_t freq) {
   // LFO Frequency is approx. ISR frequency / (256 * 2) = (excluding broken cases) 3.7mHz-100.1Hz
 }
 
-ISR(TIMER1_COMPA_vect) {
+
+// Rungler ("random") generation, generates next step and returns next byte state
+uint8_t lfo_process_rungler(uint8_t in) {
+  bool newBit = bitRead(in, 7);
+  in <<= 1;
+  
+  switch(runglerMode) {
+    case 1: newBit = !newBit; break;
+    case 0: newBit = newBit; break; // Excuse me?
+    case 2: newBit = TCNT0 >> 7; break; // Pseudo-random, though imho TCNT0 & 0b1 would be better
+  }
+  
+  bitWrite(in, 0, newBit);
+  return in;
+}
+
+// Returns rungler output dependant on it's current byte state
+uint8_t lfo_output_rungler(uint8_t in) {
   const uint8_t runglerMap[8] = {0, 80, 120, 150, 180, 200, 220, 255};
   
+  uint8_t out = 0;
+  bitWrite(out, 0, bitRead(in, 0));
+  bitWrite(out, 1, bitRead(in, 3));
+  bitWrite(out, 2, bitRead(in, 5));
+  return runglerMap[out];
+}
+
+
+ISR(TIMER1_COMPA_vect) {
   static uint8_t lfoValue = 0;
   static bool lfoFlop = false; // lfoFlop inverts the LFO value in the end, making the output falling instead of rising
   static bool doReset = false;
@@ -55,8 +93,8 @@ ISR(TIMER1_COMPA_vect) {
   lfoValue++;
 
   // Square output, slighly assymetric (probably to make it possible for the LFO to self-reset to produce a saw wave instead)
-  if (lfoFlop && lfoValue < 200) {digitalWrite(2, HIGH);}
-  else {digitalWrite(2, LOW);}
+  if (lfoFlop && lfoValue < 200) {bitWrite(PORTB, PINB2, 1);}
+  else {bitWrite(PORTB, PINB2, 0);}
 
   // Reset at pin 3: make lfo value zero, rising
   doReset = digitalRead(3);
@@ -73,28 +111,8 @@ ISR(TIMER1_COMPA_vect) {
     lfoFlop = !lfoFlop; // Invert the LFO output, we don't need to reset the LFO value (it resets itselfs by overflowing)
 
     // Rungler
-    bool newBit = bitRead(runglerByte, 7);
-    runglerByte <<= 1; // Shift the rungler
-
-    // Three rungler modes: set first bit to the last one before shift, set first bit to a random one, set first bit to inverted last one before shift
-    if(analogValues[0] < LOW_THRES) // Connected to GND
-    {
-      newBit = newBit; // Excuse me?
-    }
-    else if (analogValues[0] > HIGH_THRES) // Connected to VCC
-    { // Connected to VCC
-      newBit = TCNT0 >> 7; // Timer0 current value used as random source
-    }
-    else { // Floating
-      newBit = !newBit;
-    }
-
-    bitWrite(runglerByte, 0, newBit);
-    runglerOut = 0;
-    bitWrite(runglerOut, 0, bitRead(runglerByte, 0));
-    bitWrite(runglerOut, 1, bitRead(runglerByte, 3));
-    bitWrite(runglerOut, 2, bitRead(runglerByte, 5));
-    runglerOut = runglerMap[runglerOut];
+    runglerByte = lfo_process_rungler(runglerByte);
+    runglerOut = lfo_output_rungler(runglerByte);
   }
 
   // Flip the LFO output if we need to

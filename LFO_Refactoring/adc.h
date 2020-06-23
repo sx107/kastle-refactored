@@ -10,7 +10,8 @@
 #define ADC_RATE 2
 
 // Read values
-extern volatile uint8_t analogValues[4];
+// Commented, because everything is set using lfo_set_frequency and lfo_mode_select
+// extern volatile uint8_t analogValues[4];
 
 // LUT
 void adc_createLookup();

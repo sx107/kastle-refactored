@@ -3,30 +3,7 @@
   Original code by Vaclav Pelousek @ Bastl Instruments (c) 2017  http://www.bastl-instruments.com
   Code refactored by sx107 (Aleksandr Kurganov) (c) 2020
 
-  == File structure ==
-  This file: initializing and stuff
-  lfo.h, lfo.cpp: LFO core, Timer 1 interrupt
-  adc.h, adc.cpp: ADC functions, ADC interrupt
-
-  == Compiling ==
-  This code is intentded for Attiny85 running @ 8Mhz
-
-  Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
-  Attiny85 @ 8MHz internal
-  Millis/micros: disabled (we don't use those)
-  Timer1 clock: 32 MHz (though I don't know if it changes anything, since the timer clock source is set in timer initialization)
-  
-  LTO: Up to you, I'd set it to enabled. It can sometimes break the code, though,
-  but I hope that I've made everything that's needed volatile
-
-  == Notes ==
-
-  I've tried to stick to the original code as much as possible to keep the original functionality,
-  but later I'll refactor this code even more as a separate project.
-  Although I've tried to keep the original functionality, LFO speed is approx. half the original one.
-  Uploading the original LFO code in the bastl instruments repo sets the LFO speed to half of the original one as well.
-
-  There are tonns of potential bugs here which I'll fix in a separate, "remastering", project.
+  See README.md for additional notes
 
  == Special thanks ==
 
