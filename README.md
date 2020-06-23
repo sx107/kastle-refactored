@@ -17,7 +17,7 @@ Arduino and [AttinyCore](https://github.com/SpenceKonde/ATTinyCore) were used in
 - VCO1.5_Refactoring - refactored version of the original Kastle 1.5 VCO
 - LFO_Refactoring - refactored version of the original Kastle 1.5 LFO
 
-# Compiling and uploading
+### Compiling and uploading
 See .ino files for any particular firmwares for additional instructions.
 Use [Arduino IDE](https://www.arduino.cc/en/Main/Software) and [AttinyCore](https://github.com/SpenceKonde/ATTinyCore) to compile and upload the firmwares.
 I'd recommend to not use the optiboot bootloader, since you will have to buy some sort of programmer to upload the bootloader anyway.
