@@ -40,7 +40,7 @@ Setting both __S_ADC_FIX__ and __S_LUT_FIX__ seems to fix the LFO frequency issu
 ## Known bugs transferred from the original code
 
 - _setFrequency()_: Setting the frequency too low sets the Timer1 prescaler to 1 or 0, which makes it tick either way too fast or entierly stops. See _setFrequency()_ code in lfo.cpp. Fixed with __S_LUT_FIX__
-- Square output is a bit noisy sometimes, though it might be more of a schematics issue.
+- Square output is a bit noisy, most probably this is due to a bug in Timer1 ISR. Square output is set high not only in the end of the rising slope, but also at the start of rising slope briefly.
 - In the original shared code LFO frequency is approx. half the frequency in the original firmware. Fixed by setting __S_ADC_FIX__ and __S_LUT_FIX__.
 - Only 8 bits of ADC resolution are used by bit-shifting 10 bits of ADC conversion result, though it can be done much easier and faster by setting ADLAR bit in the ADC registers.
 
