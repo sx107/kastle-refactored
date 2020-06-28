@@ -1,8 +1,7 @@
 # LFO Refactoring
 This is a refactored version of the LFO source code shared in the original repo.
-Later, I'll also add the DUAL_STEP firmware in this same source code by utilizing defines.
 
-I'm trying to stay as close to the original code as possible to provide the same functionality. No bugfixes will be provided in this refactoring code - I'll make them in a separate "remastered" version of the firmware.
+I'm trying to stay as close to the original code as possible to provide the same functionality. No bugfixes will be provided in this refactoring code. See LFO_Remaster for an improved & bugfixed version of the firmware.
 
 Original code Original code by Vaclav Pelousek @ [Bastl Instruments](http://www.bastl-instruments.com) (c) 2017  
 
@@ -45,7 +44,6 @@ Setting both __S_ADC_FIX__ and __S_LUT_FIX__ seems to fix the LFO frequency issu
 - Only 8 bits of ADC resolution are used by bit-shifting 10 bits of ADC conversion result, though it can be done much easier and faster by setting ADLAR bit in the ADC registers.
 
 ## TODO
-- Add DUAL_STEP firmware capabilities in this one by utilizing defines.
 - Re-check the frequency issue: maybe, __S_ADC_FIX__ and __S_LUT_FIX__ should be enabled by default?
 - lfo.cpp, Timer1 ISR: replace _digitalRead(3)_ with a direct bitRead (for some reason _bitRead(PINB, PINB3)_ does not work)
 
