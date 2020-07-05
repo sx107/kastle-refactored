@@ -22,29 +22,15 @@ Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
 - B.O.D. : disabled
 - Save EEPROM: set to "EEPROM Retained" according to the fuse bits in the original firmware, though it does not matter since EEPROM is not used.
 
-## Settings in settings.h
-
-- __S_ADC_FIX__ In the VCO code and in DUAL_STEP code a software fix for the zener diodes holding some stray voltage is provided by briefly switching the ADC inputs to digital outputs pulled to GND every second ADC conversion. In the original LFO firmware, though, it is not done and it breaks the code at low LFO values (see bugs) and is not utilized in the original LFO code.
-- __S_LUT_FIX__ As said before, the __S_ADC_FIX__ define can break the code at low values. In the DUAL_STEP firmware original code this is fixed by changing the look-up table of ADC readings, and it does help, since the mapped ADC output never reaches the "breaking" values.
-
-In the original LFO code both __S_ADC_FIX__ and __S_LUT_FIX__ are "unset". Though, the LFO frequency is then almost half the frequency in the firmware directly read from uC at mid-values.
-
-Setting both __S_ADC_FIX__ and __S_LUT_FIX__ seems to fix the LFO frequency issue, perhaps they just forgot to update the ADC ISR and LUT in the original code.
-
-| Code | S_ADC_FIX | S_LUT_FIX |
-| --- | --- | --- |
-| Original LFO code | Disabled | Disabled |
-| "Fixed" LFO code, frequency closer to the original | Enabled | Enabled |
-
 ## Known bugs transferred from the original code
 
 - _setFrequency()_: Setting the frequency too low sets the Timer1 prescaler to 1 or 0, which makes it tick either way too fast or entierly stops. See _setFrequency()_ code in lfo.cpp. Fixed with __S_LUT_FIX__
 - Square output is a bit noisy, most probably this is due to a bug in Timer1 ISR. Square output is set high not only in the end of the rising slope, but also at the start of rising slope briefly.
-- In the original shared code LFO frequency is approx. half the frequency in the original firmware. Fixed by setting __S_ADC_FIX__ and __S_LUT_FIX__.
 - Only 8 bits of ADC resolution are used by bit-shifting 10 bits of ADC conversion result, though it can be done much easier and faster by setting ADLAR bit in the ADC registers.
+- The code that flushes the zener diodes stray voltage is time-crucial and is sensitive to compiler and optimization settings. Replaced with asm insertion
+
 
 ## TODO
-- Re-check the frequency issue: maybe, __S_ADC_FIX__ and __S_LUT_FIX__ should be enabled by default?
 - lfo.cpp, Timer1 ISR: replace _digitalRead(3)_ with a direct bitRead (for some reason _bitRead(PINB, PINB3)_ does not work)
 
 ## License

@@ -1,4 +1,3 @@
-#include "settings.h"
 #include "lfo.h"
 #include "adc.h"
 #define F_CPU 8000000UL

@@ -1,4 +1,3 @@
-#include "settings.h"
 #include "adc.h"
 #include "lfo.h"
 #define F_CPU 8000000UL
@@ -13,13 +12,8 @@
 // For example, 97-161 range is mapped to 100-210
 #define CCURVE_NPOINTS 5
 
-#ifndef S_LUT_FIX
-  const uint8_t cCurve_from[] = {0,   30,   97,   161,  255};
-  const uint8_t cCurve_to[]   = {1,   30,  100,   210,  254};
-#else
-  const uint8_t cCurve_from[] = {0,   60,   127,   191,  255};
-  const uint8_t cCurve_to[]   = {50,   127,  190,   230,  254};
-#endif
+const uint8_t cCurve_from[] = {0,   60,   127,   191,  255};
+const uint8_t cCurve_to[]   = {50,   127,  190,   230,  254};
 
 uint8_t cCurve[256]; // cCurve isn't changed in the ISR, so volatile is not required here
 
@@ -32,14 +26,9 @@ volatile uint8_t lastAnalogValues[4] = {255, 255, 255, 255};
 volatile uint8_t analogChannelRead = ADC_RATE;
 volatile uint8_t analogChannelReadIndex = 0;
 
-#ifdef S_ADC_FIX
-  volatile bool skipConversion = false; // Every second ADC reading is skipped
-#endif
-
-
+volatile bool skipConversion = false; // Every second ADC reading is skipped
 
 // ADC calibration curve LUT generation
-
 uint8_t adc_curveMap(uint8_t value) {
   uint8_t inMin = 0, inMax = 255, outMin = 0, outMax = 255;
   for(uint8_t i = 0; i < CCURVE_NPOINTS - 1; i++) {
@@ -66,25 +55,42 @@ void adc_createLookup() {
 // ADC ISR
 
 ISR(ADC_vect) {
-  const uint8_t analogToDigitalPinMapping[4]={PORTB5,PORTB2,PORTB4,PORTB3}; // Not used if S_ADC_FIX is not set
-  const uint8_t analogChannelSequence[6]={ADC_MODE, ADC_RATE};
+  // const uint8_t analogToDigitalPinMapping[4]={PORTB5,PORTB2,PORTB4,PORTB3}; // Not used, see note below
+  const uint8_t analogChannelSequence[2]={ADC_MODE, ADC_RATE};
 
   //If we need - skip every second conversion
-  #ifdef S_ADC_FIX
+  //#ifdef S_ADC_FIX
     if(skipConversion) {
       if(analogChannelRead != ADC_MODE) {
-        // I've kept the code original here, though it clearly can be optimized
-        // Apparently this is done to flush the stray voltage on the zener diodes (?)
-        // And to skip every second conversion due to multiplexer cross-talk (?!)
-        if(analogValues[analogChannelRead]<200) bitWrite(DDRB,analogToDigitalPinMapping[analogChannelRead],1);
+        // Famous last words: "I've kept the code original here, though it clearly can be optimized"
+        // This is done to flush the stray voltage on the zener diodes
+
+        // Original code:
+        /*
+        if(analogValues[analogChannelRead]<187) bitWrite(DDRB,analogToDigitalPinMapping[analogChannelRead],1);
         bitWrite(DDRB,analogToDigitalPinMapping[analogChannelRead],0);
         bitWrite(PORTB,analogToDigitalPinMapping[analogChannelRead],0);
+        */
+
+        // Original code does not work in my compiling setup, since the optimizer does not recognize that this code can be shortened
+        // to 3 instructions, since analogChannelRead is the same every time essentially because of "if(analogChannelRead != ADC_MODE)".
+        // In the original .hex it is shortened to 3 instructions, though.
+        // Since this code is time-crucial, I'll just make sure that it works by writing the asm instructions required. Port is B4
+        // 0x17 is DDRB, 0x18 is PORTB
+
+        if(analogValues[analogChannelRead]<187) {
+          __asm__ __volatile__ (
+            "sbi 0x17, 4\n"
+            "cbi 0x17, 4\n"
+            "cbi 0x18, 4\n"  
+          );
+        }
       }
       skipConversion = !skipConversion;
       adc_startConversion();
       return;
     }
-  #endif
+  //#endif
 
   // Save previous value and read new one
   lastAnalogValues[analogChannelRead] = analogValues[analogChannelRead];
@@ -102,9 +108,9 @@ ISR(ADC_vect) {
   analogChannelRead=analogChannelSequence[analogChannelReadIndex];
 
   //Switch skipConversion if we need to
-  #ifdef S_ADC_FIX
+  //#ifdef S_ADC_FIX
     skipConversion = !skipConversion;
-  #endif
+  //#endif
 
   // Next conversion
   adc_connectChannel(analogChannelRead);
