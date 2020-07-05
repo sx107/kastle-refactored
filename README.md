@@ -37,9 +37,7 @@ See .ino file comments.
 ### Do refactored versions sound exactly the same?
 Almost. I did not modify the synthesis code much in them, though for some reason these firmwares do sound a tad bit different from the original one.
 
-- The LFO speed, though, is halved compared to the original one. Compiling and uploading the LFO firmware from the original bastl instruments repo has the same effect.
-Probably, somewhere in the process they have changed it and forgot to update the code in repo, or I'm missing something major here.
-__A fix for this issue is provided.__
+- ~~The LFO speed, though, is halved compared to the original one. Compiling and uploading the LFO firmware from the original bastl instruments repo has the same effect. Probably, somewhere in the process they have changed it and forgot to update the code in repo, or I'm missing something major here.~~  __FIXED__
 
 - VCO FM output is a bit more noisy
 
