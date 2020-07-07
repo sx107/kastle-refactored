@@ -17,16 +17,19 @@ volatile bool skipConversion = false; // Every second ADC reading is skipped
 
 // ADC ISR
 
-ISR(ADC_vect) {
-  const uint8_t analogToDigitalPinMapping[4]={PORTB5,PORTB2,PORTB4,PORTB3};
+ISR(ADC_vect) {  
   const uint8_t analogChannelSequence[6]={ADC_MODE, ADC_RATE};
 
   //If we need - skip every second conversion
   if(skipConversion) {
-    if(analogChannelRead != ADC_MODE) {
-      bitWrite(DDRB,analogToDigitalPinMapping[analogChannelRead],1); 
-      bitWrite(DDRB,analogToDigitalPinMapping[analogChannelRead],0);
-      bitWrite(PORTB,analogToDigitalPinMapping[analogChannelRead],0);
+    if(analogChannelRead == ADC_RATE && analogValues[ADC_RATE] < 750) {
+      // 0x17 is DDRB, 0x18 is PORTB, 4 is PORTB4 = ADC_RATE pin
+      // Assembler insertion to make sure it is done as fast as possible, since this code is very time-sensitive
+      __asm__ __volatile__ (
+        "sbi 0x17, 4\n"
+        "cbi 0x17, 4\n"
+        "cbi 0x18, 4\n"  
+      );
     }
     skipConversion = !skipConversion;
     adc_startConversion();
@@ -53,7 +56,7 @@ ISR(ADC_vect) {
 
 // Different ADC functions: initialization, conversion running/stopping, etc.
 
-void adc_init() {
+void adc_init() {  
   // ADC Clock Frequency is 8000000/128 = 62.5kHz
   // ADC Sample rate is 62.5kHz / 13.5 = 4.63 kHz
   ADMUX  = 0;

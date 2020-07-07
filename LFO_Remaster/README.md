@@ -36,24 +36,36 @@ Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
 - __S_TRUE_RANDOM__ Trully randomizes the rungler byte every initialization
 - __S_USE_8BIT__ Use only 8bits of ADC resolution
 - __S_FASTER_LFO__ Increases the ADC conversion result for LFO frequency calculation by the amount set in this define. Requiered since the ADC for some reason does not read whole 0-1023 range. If you wish to return to the original frequnecy range, comment this define out (it's faster than setting it to 0)
+- __S_USE_EXP_LOOKUP__ Makes the transition between timer1 prescalers exponential by using a look-up table
+
+## Theoretical LFO frequency
+With __S_USE_EXP_LOOKUP__
+
+![Theoretical LFO frequency with exponential LUT](/readme_images/w_exp.png)
+
+And without
+
+![Theoretical LFO frequency without exponential LUT](/readme_images/no_exp.png)
 
 ## Known bugs & issues
 
 Don't forget to add your own bugs during bugfixes to make it more interesting...
 
-- At a certain audiorate frequency LFO output can become very noisy. To be investigated.
-- If you connect the LFO triangle output to LFO Rate modulation and set the LFO Rate modulation amount to max, the LFO triangle output becomes "modulated" by ~600Hz signal for some reason. If the LFO rate modulation is set to <= ~80%, everything is fine.
+- At a certain audiorate frequency LFO output can become very noisy. Apparently, this happens at the transition between lfo_phase_increase = 1 and lfo_phase_increase = 2.
+- ISR frequencies higher than ~50kHz are unreachable, which makes high audiorate frequencies lower than calculated. This is another reason to lower the ISR frequency, sample rates higher than 20kHz are imho unnecessary.
 - Probably not an issue at all: if you connect the square output to the LFO rate modulation and set the LFO rate modulation knob to max, a rising saw that is produced on the LFO Tri output clicks every period.
 
 ## TODO
 - Fix bugs
 - Add DUAL_STEP firmware capabilities in this one by utilizing defines
 - Make LFO react to reset almost instantly by resetting all prescalers and calling the Timer1 ISR in the reset ISR
-- It would be much better if INT0 ISR will be used instead of the PCINT0 ISR for reset, though it requires the schematic to be changed (PINB2 and PINB3 have to be swapped)
-- Maybe: Replace lfo flopping by simply computing (255-lfoValue) with PWM inversion bit
-- Maybe: lower the ISR frequency and loose 1 bit of output resolution earlier
-- Maybe: add a look-up table to make the LFO response to frequency modulation more logariphmic between Timer1 prescaler changes
-- Maybe: make the EEPROM a bit more redundant (CRC checks and stuff). Most probably it is not required, since EEPROM is used for random generation anyway
+- It would be much better if INT0 ISR would be used instead of the PCINT0 ISR for reset, though it requires the schematic to be changed (PINB2 and PINB3 have to be swapped)
+- Lower the ISR frequency and gradualy loose the resolution by making the lfoValue 16-bit and making phase increase 0x100, and then controlling it more precise
+- Make the ADC frequency higher, maybe add running mean noise smooting and/or hysteresis
+
+## Bad ideas
+- Replacing lfo flopping by simply computing (255-lfoValue) with PWM inversion bit. This is a bad idea, because such a solution causes glitches due to a race condition between setting the OCR0B and COM0B0 (do we invert the PWM output first or set it to the right value first?)
+- Making the EEPROM a bit more redundant (CRC checks and stuff). Totaly unnecessary.
 
 ## License
 __CC-BY-SA__ according to the original license.
