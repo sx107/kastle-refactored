@@ -41,11 +41,11 @@ Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
 ## Theoretical LFO frequency
 With __S_USE_EXP_LOOKUP__
 
-![Theoretical LFO frequency with exponential LUT](/readme_images/w_exp.png)
+![Theoretical LFO frequency with exponential LUT](readme_images/w_exp.png)
 
 And without
 
-![Theoretical LFO frequency without exponential LUT](/readme_images/no_exp.png)
+![Theoretical LFO frequency without exponential LUT](readme_images/no_exp.png)
 
 ## Known bugs & issues
 
