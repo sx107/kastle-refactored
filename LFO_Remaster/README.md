@@ -13,6 +13,7 @@ Original code Original code by Vaclav Pelousek @ [Bastl Instruments](http://www.
 - LFO max frequency is now faster and it can be used as a sub-oscillator, which opens a lot of audiorate modulation creative possibilities
 - Parameters are updated in loop(), not in ADC ISR, atomic locks added
 - Moved "lastAnalogValues[i] != analogValues[i]" to lfo_set_frequency
+- ADC frequency increased
 
 ## Files description
 - LFO_Remaster.ino: main file, initializing and stuff, variables update in loop()
@@ -32,11 +33,12 @@ Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
 - Save EEPROM: EEPROM Retained
 
 ## Settings in settings.h
-
+- __S_ADC_FIX__ Enables the software fix for the zener diodes issue (ignores the conversion result and pulls the analog pin to ground briefly every second conversion)
 - __S_TRUE_RANDOM__ Trully randomizes the rungler byte every initialization
 - __S_USE_8BIT__ Use only 8bits of ADC resolution
 - __S_FASTER_LFO__ Increases the ADC conversion result for LFO frequency calculation by the amount set in this define. Requiered since the ADC for some reason does not read whole 0-1023 range. If you wish to return to the original frequnecy range, comment this define out (it's faster than setting it to 0)
 - __S_USE_EXP_LOOKUP__ Makes the transition between timer1 prescalers exponential by using a look-up table (before audiorate cap)
+- __S_USE_MOVAVG__ Uses moving average (of size 2) to smooth the ADC conversions. Although the resolution could be upped to 11 bits, it still stays at 10 bits. The response is slowed a tad bit, but the output becomes a little bit smoother and stable.
 - __S_PRESCALER_CAP__ At which prescaler value the program switches to audiorate mode. Do not set to a value lower than 1.
 - __S_ISRFREQ_TEST__ Replaces the square output with a square output that indicates the Timer1 ISR frequency. Added only for debugging purposes.
 
@@ -49,11 +51,11 @@ Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
 - Add DUAL_STEP firmware capabilities in this one by utilizing defines
 - Make LFO react to reset almost instantly by resetting all prescalers and calling the Timer1 ISR in the reset ISR
 - It would be much better if INT0 ISR would be used instead of the PCINT0 ISR for reset, though it requires the schematic to be changed (PINB2 and PINB3 have to be swapped)
-- Make the ADC frequency higher, maybe add running mean noise smooting and/or hysteresis
 
 ## Bad ideas
 - Replacing lfo flopping by simply computing (255-lfoValue) with PWM inversion bit. This is a bad idea, because such a solution causes glitches due to a race condition between setting the OCR0B and COM0B0 (do we invert the PWM output first or set it to the right value first?)
 - Making the EEPROM a bit more redundant (CRC checks and stuff). Totaly unnecessary.
+- Moving average and histeresis: LFO implementation requires very fast response to ADC value changes. Otherwise, for example, connecting the square output to the LFO rate modulation (which is set at max) does not produce a proper rising saw wave at the triangle output. Huge moving average filters are slow, and require fast ADC speeds. It's just too much for the poor Attiny85.
 
 ## Theoretical LFO frequency explanation (or how lfo_set_frequency works)
 

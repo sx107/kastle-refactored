@@ -13,32 +13,50 @@ volatile uint8_t analogChannelRead = ADC_RATE;
 volatile uint8_t analogChannelReadIndex = 0;
 volatile uint8_t atomicLock[4] = {false, false, false, false};
 
-volatile bool skipConversion = false; // Every second ADC reading is skipped
+#ifdef S_ADC_FIX
+  volatile bool skipConversion = false; // Every second ADC reading is skipped
+#endif
 
 // ADC ISR
 
 ISR(ADC_vect) {  
   const uint8_t analogChannelSequence[6]={ADC_MODE, ADC_RATE};
+  #ifdef S_USE_MOVAVG
+    static uint16_t prevAnalogValues[4] = {0, 0, 0, 0};
+  #endif
 
-  //If we need - skip every second conversion
-  if(skipConversion) {
-    if(analogChannelRead == ADC_RATE && analogValues[ADC_RATE] < 750) {
-      // 0x17 is DDRB, 0x18 is PORTB, 4 is PORTB4 = ADC_RATE pin
-      // Assembler insertion to make sure it is done as fast as possible, since this code is very time-sensitive
-      __asm__ __volatile__ (
-        "sbi 0x17, 4\n"
-        "cbi 0x17, 4\n"
-        "cbi 0x18, 4\n"  
-      );
+  #ifdef S_ADC_FIX
+    //If we need - skip every second conversion
+    if(skipConversion) {
+      if(analogChannelRead == ADC_RATE && analogValues[ADC_RATE] < 750) {
+        // 0x17 is DDRB, 0x18 is PORTB, 4 is PORTB4 = ADC_RATE pin
+        // Assembler insertion to make sure it is done as fast as possible, since this code is very time-sensitive
+        __asm__ __volatile__ (
+          "sbi 0x17, 4\n"
+          "cbi 0x17, 4\n"
+          "cbi 0x18, 4\n"  
+        );
+      }
+      skipConversion = !skipConversion;
+      adc_startConversion();
+      return;
     }
-    skipConversion = !skipConversion;
-    adc_startConversion();
-    return;
-  }
+  #endif
 
-  // Set atomic lock, read value, reset atomic lock
+  // Moving average using prevAnalogValues[]
+  uint16_t val = adc_getConversionResult();
+  #ifdef S_USE_MOVAVG
+    uint16_t avgVal = (val + prevAnalogValues[analogChannelRead]) >> 1;
+    prevAnalogValues[analogChannelRead] = val;
+  #endif
+
+  // Set atomic lock, set value, reset atomic lock
   atomicLock[analogChannelRead] = true;
-  analogValues[analogChannelRead] = adc_getConversionResult();
+  #ifdef S_USE_MOVAVG
+    analogValues[analogChannelRead] = avgVal;
+  #else
+    analogValues[analogChannelRead] = val;
+  #endif
   atomicLock[analogChannelRead] = false;
 
   // Switch to the next channel
@@ -47,7 +65,9 @@ ISR(ADC_vect) {
   analogChannelRead=analogChannelSequence[analogChannelReadIndex];
 
   //Switch skipConversion if we need to
-  skipConversion = !skipConversion;
+  #ifdef S_ADC_FIX
+    skipConversion = !skipConversion;
+  #endif
 
   // Next conversion
   adc_connectChannel(analogChannelRead);
@@ -57,11 +77,11 @@ ISR(ADC_vect) {
 // Different ADC functions: initialization, conversion running/stopping, etc.
 
 void adc_init() {  
-  // ADC Clock Frequency is 8000000/128 = 62.5kHz
-  // ADC Sample rate is 62.5kHz / 13.5 = 4.63 kHz
+  // ADC Clock Frequency is 8000000/8 = 1 MHz
+  // ADC Sample rate is 1MHz / 13.5 = 74.1 kHz (remember that it is also limited by the ADC ISR execution time and should be divided by 2)
   ADMUX  = 0;
   bitWrite(ADCSRA,ADEN,1);                        // ADC enable
-  ADCSRA |= bit(ADPS0) | bit(ADPS1) | bit(ADPS2); // Prescaler : 1/128
+  ADCSRA |= bit(ADPS0) | bit(ADPS1); // Prescaler : 1/8
   bitWrite(ADCSRA,ADIE,1);                        // Enable conversion finished interupt
 
 }
