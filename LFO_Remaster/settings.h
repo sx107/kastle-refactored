@@ -4,6 +4,7 @@
 #define S_FASTER_LFO 120
 #define S_USE_EXP_LOOKUP
 //#define S_USE_MOVAVG
+//#define S_SINE_OUTPUT
 
 //Don't set it lower than 1.
 #define S_PRESCALER_CAP 2

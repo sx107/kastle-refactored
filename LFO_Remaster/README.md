@@ -7,7 +7,6 @@ Original code Original code by Vaclav Pelousek @ [Bastl Instruments](http://www.
 ## Main changes
 - Whole 10 bits of ADC resolution are used for frequency setup instead of just 8
 - Rungler is properly randomized in initialization (made using EEPROM)
-- curveMap is cut out, LFO response to the frequency modulation is pseudo-logariphmic
 - Square output is now completely symmetric and clean
 - LFO reset done in a separate PCINT0 ISR and can react to short pulses even at low LFO frequencies
 - LFO max frequency is now faster and it can be used as a sub-oscillator, which opens a lot of audiorate modulation creative possibilities
@@ -16,6 +15,7 @@ Original code Original code by Vaclav Pelousek @ [Bastl Instruments](http://www.
 - Parameters are updated in loop(), not in ADC ISR, atomic locks added
 - Moved "lastAnalogValues[i] != analogValues[i]" to lfo_set_frequency
 - ADC frequency increased
+- Sine output added
 
 ## Files description
 - LFO_Remaster.ino: main file, initializing and stuff, variables update in loop()
@@ -41,15 +41,16 @@ Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
 - __S_FASTER_LFO__ Increases the ADC conversion result for LFO frequency calculation by the amount set in this define. Requiered since the ADC for some reason does not read whole 0-1023 range. If you wish to return to the original frequnecy range, comment this define out (it's faster than setting it to 0)
 - __S_USE_EXP_LOOKUP__ Makes the transition between timer1 prescalers exponential by using a look-up table (before audiorate cap)
 - __S_USE_MOVAVG__ Uses moving average (of size 2) to smooth the ADC conversions. Although the resolution could be upped to 11 bits, it still stays at 10 bits. The response is slowed a tad bit, but the output becomes a little bit smoother and stable.
+- __S_SINE_OUTPUT__ Makes the triangle output sinusoidal by using a look-up table
 - __S_PRESCALER_CAP__ At which prescaler value the program switches to audiorate mode. Do not set to a value lower than 1.
 - __S_ISRFREQ_TEST__ Replaces the square output with a square output that indicates the Timer1 ISR frequency. Added only for debugging purposes.
 
 ## Known bugs & issues
-
 - Probably not an issue at all: if you connect the square output to the LFO rate modulation and set the LFO rate modulation knob to max, a rising saw that is produced on the LFO Tri output clicks every period.
 
 ## TODO
 - Find and fix bugs
+- Maybe: move all look-up tables to a separate file?
 - Add DUAL_STEP firmware capabilities in this one by utilizing defines
 - Make LFO react to reset almost instantly by resetting all prescalers and calling the Timer1 ISR in the reset ISR
 - It would be much better if INT0 ISR would be used instead of the PCINT0 ISR for reset, though it requires the schematic to be changed (PINB2 and PINB3 have to be swapped)
