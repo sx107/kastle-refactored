@@ -11,6 +11,8 @@ Original code Original code by Vaclav Pelousek @ [Bastl Instruments](http://www.
 - Square output is now completely symmetric and clean
 - LFO reset done in a separate PCINT0 ISR and can react to short pulses even at low LFO frequencies
 - LFO max frequency is now faster and it can be used as a sub-oscillator, which opens a lot of audiorate modulation creative possibilities
+- ISR frequency is now capped at 15kHz
+- Frequency response to the ADC input is now closer to exponential
 - Parameters are updated in loop(), not in ADC ISR, atomic locks added
 - Moved "lastAnalogValues[i] != analogValues[i]" to lfo_set_frequency
 
