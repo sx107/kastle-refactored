@@ -42,6 +42,7 @@ Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
 - __S_USE_EXP_LOOKUP__ Makes the transition between timer1 prescalers exponential by using a look-up table (before audiorate cap)
 - __S_USE_MOVAVG__ Uses moving average (of size 2) to smooth the ADC conversions. Although the resolution could be upped to 11 bits, it still stays at 10 bits. The response is slowed a tad bit, but the output becomes a little bit smoother and stable.
 - __S_SINE_OUTPUT__ Makes the triangle output sinusoidal by using a look-up table
+- __S_DOUBLE_RUNGLER_FIX__ When the square output is connected straight to the LFO reset input, rungler is processed two times each time (once because the LFO direction change triggers it, and once because of the LFO reset) and therefore the actual rungler length is twice as short. Setting this define fixes this issue by making sure that rungler is never processed in two consequent lfo processing steps. In the original LFO firmware this define is "set", but the issue is solved by another means (the square output is asymmetric in the original firmware), therefore this define is enabled by default. My own preference is to _not_ set this define, since double rungler processing behaviour is more "true-to-life" in my opinion and more intuitive.
 - __S_PRESCALER_CAP__ At which prescaler value the program switches to audiorate mode. Do not set to a value lower than 1.
 - __S_ISRFREQ_TEST__ Replaces the square output with a square output that indicates the Timer1 ISR frequency. Added only for debugging purposes.
 
@@ -52,7 +53,6 @@ Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
 - Find and fix bugs
 - Maybe: move all look-up tables to a separate file?
 - Add DUAL_STEP firmware capabilities in this one by utilizing defines
-- Make LFO react to reset almost instantly by resetting all prescalers and calling the Timer1 ISR in the reset ISR
 - It would be much better if INT0 ISR would be used instead of the PCINT0 ISR for reset, though it requires the schematic to be changed (PINB2 and PINB3 have to be swapped)
 
 ## Bad ideas

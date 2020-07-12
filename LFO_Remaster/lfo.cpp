@@ -22,7 +22,10 @@ volatile uint16_t lfo_phase_increase = 0x100;
 
 volatile uint16_t lfoValue = 0;    // global, since 
 volatile bool lfoFlop = false;    // lfoFlop inverts the LFO value in the end, making the output falling instead of rising
-volatile bool doneReset = false;  // Have the reset ISR just done a reset?
+volatile bool doneReset = false;  // Has the reset ISR just issued a reset?
+#ifdef S_DOUBLE_RUNGLER_FIX
+  volatile bool doneRungler = false; // Has rungler been processed in the previous process_lfo_output() call?
+#endif
 
 // LUT for LFO frequencies before the audiorate. See readme.md.
 // f(x) = 128 * 2^(x / 127.721) for x in [0, 127]
@@ -143,31 +146,15 @@ uint8_t lfo_output_rungler(uint8_t in) {
   bitWrite(out, 2, bitRead(in, 5));
   return runglerMap[out];
 }
-  
-
-// Reset interrupt
-ISR(PCINT0_vect) {
-  if(bitRead(PINB, PINB3)) {return;}
-  lfoValue = 0;
-  lfoFlop = true;
-  doneReset = true;
-
-  //TODO: Call Timer1 ISR here, reset the TCNT1, reset Timer1 prescaler
-}
 
 
-ISR(TIMER1_COMPA_vect) {
-  // Reset the TIMER1
-  // This is done immedeately to make the ISR frequnecy as stable as possible and independent of the speed of the code below.
-  // Theoretically, it could lead to issues due to the ISR code being too slow. But believe me, it isn't especially considering the ISR frequnecy cap.
-  TCNT1 = 0; 
-  
+//This code may be called either in the reset ISR or Timer1 ISR
+void process_lfo_output() {  
   #ifdef S_ISRFREQ_TEST
     bitWrite(PINB, PINB2, 1);
   #endif
   
   static uint8_t runglerOut = 0; // runglerByte is globally defined
-
 
   // These temporary values are required to make the code faster, since both of these variables are declared volatile
   uint16_t lfoTempValue = lfoValue;
@@ -184,25 +171,33 @@ ISR(TIMER1_COMPA_vect) {
     // Invert the LFO output, we don't need to reset the LFO value (it resets itselfs by overflowing)
     // If this interrupt was triggered by a reset, then we DONT need to flop the value
     if(!doneResetTemp) {lfoFlop = !lfoFlop;} 
-    // Rungler
-    runglerByte = lfo_process_rungler(runglerByte);
-    runglerOut = lfo_output_rungler(runglerByte);
+    // Perform rungler processing only if it hasn't been performed in the previous lfo_process_output() call
+    // This is done to avoid double rungler processing when square output is connected to the reset
+    // If S_DOUBLE_RUNGLER_FIX is not set, then rungler is processed in any case
+    #ifdef S_DOUBLE_RUNGLER_FIX
+      if(!doneRungler) {
+        runglerByte = lfo_process_rungler(runglerByte);
+        runglerOut = lfo_output_rungler(runglerByte);
+        doneRungler = true;
+      }
+    #else
+      runglerByte = lfo_process_rungler(runglerByte);
+      runglerOut = lfo_output_rungler(runglerByte);
+    #endif
+  } else {
+    #ifdef S_DOUBLE_RUNGLER_FIX
+      doneRungler = false;
+    #endif
   }
 
   lfo8bitPrevValue = lfo8bitValue;
   lfoValue = lfoTempValue;
   
-  // Square output, slighly assymetric (probably to make it possible for the LFO to self-reset to produce a saw wave instead)
+  // Square output
   #ifndef S_ISRFREQ_TEST
     if (lfoFlop) {bitWrite(PORTB, PINB2, 1);}
     else {bitWrite(PORTB, PINB2, 0);}
   #endif
-
-  // These NOPs are to wait a bit for the PCINT0 interrupt to react if square output is connected to the reset pin
-  // PCINT0 is "more important" than Timer1 COMPA interrupt
-  __asm__ __volatile__ ("nop\n\t"); 
-  __asm__ __volatile__ ("nop\n\t"); 
-  __asm__ __volatile__ ("nop\n\t");
 
   // Output
   OCR0A = runglerOut;
@@ -214,5 +209,30 @@ ISR(TIMER1_COMPA_vect) {
   if(lfoFlop) {lfo8bitValue = ~lfo8bitValue;} // ~lfo8bitValue is essentially 255 - lfo8bitValue, but faster
   OCR0B = lfo8bitValue;
 
-  doneReset = false;  
+  doneReset = false;
+}
+  
+
+// Reset interrupt
+ISR(PCINT0_vect) {
+  if(bitRead(PINB, PINB3)) {return;}
+
+  // Reset everything
+  TCNT1 = 0;
+  bitSet(GTCCR, PSR1);
+  lfoValue = 0;
+  lfoFlop = true;
+  doneReset = true;
+
+  process_lfo_output();
+}
+
+
+ISR(TIMER1_COMPA_vect) {
+  // Reset the TIMER1
+  // This is done immedeately to make the ISR frequnecy as stable as possible and independent of the speed of the code below.
+  // Theoretically, it could lead to issues due to the ISR code being too slow. But believe me, it isn't especially considering the ISR frequnecy cap.
+  TCNT1 = 0; 
+  
+  process_lfo_output();
 }
