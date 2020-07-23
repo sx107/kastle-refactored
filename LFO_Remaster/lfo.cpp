@@ -16,6 +16,9 @@
 #define RND_SEED_ADDR 0
 
 volatile uint8_t runglerByte = 0; // Will be set to a random value in lfo_init()
+#ifdef S_DUAL_RUNGLER_OUTPUT
+  volatile uint8_t runglerByte2 = 0;
+#endif
 volatile uint8_t runglerMode = 1; // 0 - connected to GND, 1 - floating, 2 - VCC
 
 volatile uint16_t lfo_phase_increase = 0x100;
@@ -52,6 +55,9 @@ void lfo_init() {
   #endif
   
   runglerByte = random(255);
+  #ifdef S_DUAL_RUNGLER_OUTPUT
+    runglerByte2 = random(255);
+  #endif
 
   //Init the reset interrupt
   bitSet(GIMSK, PCIE); // Enabe pin change interrupt
@@ -87,7 +93,6 @@ void lfo_set_frequency(uint16_t freq) {
   freq = 2047 - (freq << 1);
 
   // See code description in readme.md, since this explanation is way too long.
-  // 
   uint8_t prescaler = (freq >> 7) & 0b1111;
   
   #ifdef S_USE_EXP_LOOKUP
@@ -150,11 +155,15 @@ uint8_t lfo_output_rungler(uint8_t in) {
 
 //This code may be called either in the reset ISR or Timer1 ISR
 void process_lfo_output() {  
+  // Debug
   #ifdef S_ISRFREQ_TEST
     bitWrite(PINB, PINB2, 1);
   #endif
   
-  static uint8_t runglerOut = 0; // runglerByte is globally defined
+  static uint8_t runglerOut = 0; // runglerByte is globally defined.
+  #ifdef S_DUAL_RUNGLER_OUTPUT
+    static uint8_t runglerOut2 = 0;
+  #endif
 
   // These temporary values are required to make the code faster, since both of these variables are declared volatile
   uint16_t lfoTempValue = lfoValue;
@@ -176,20 +185,42 @@ void process_lfo_output() {
     // If S_DOUBLE_RUNGLER_FIX is not set, then rungler is processed in any case
     #ifdef S_DOUBLE_RUNGLER_FIX
       if(!doneRungler) {
-        runglerByte = lfo_process_rungler(runglerByte);
-        runglerOut = lfo_output_rungler(runglerByte);
-        doneRungler = true;
-      }
     #else
+      if(true) {
+    #endif
       runglerByte = lfo_process_rungler(runglerByte);
       runglerOut = lfo_output_rungler(runglerByte);
-    #endif
+
+      #ifdef S_DUAL_RUNGLER_OUTPUT
+        #ifndef S_SECOND_RUNGLER_PHASESHIFT
+          runglerByte2 = lfo_process_rungler(runglerByte2);
+          runglerOut2 = lfo_output_rungler(runglerByte2);
+        #endif
+      #endif
+      
+      #ifdef S_DOUBLE_RUNGLER_FIX
+        doneRungler = true;
+      #endif
+    }
   } else {
+    // Set doneRungler to false if reset/overflow wasn't triggered and if double rungler processing fix is enabled
     #ifdef S_DOUBLE_RUNGLER_FIX
       doneRungler = false;
     #endif
   }
 
+  //Second rungler processing
+  #ifdef S_DUAL_RUNGLER_OUTPUT
+    #ifdef S_SECOND_RUNGLER_PHASESHIFT
+      // If leftmost bit has changed AND reset wasn't just issued. It makes second rungler output phase-shifted by 90 degrees
+      if((lfo8bitPrevValue & 0x80) == 0 && (lfo8bitValue & 0x80) != 0) {
+        runglerByte2 = lfo_process_rungler(runglerByte2);
+        runglerOut2 = lfo_output_rungler(runglerByte2);
+      }
+    #endif
+  #endif
+
+  // Update lfob8itPrevValue
   lfo8bitPrevValue = lfo8bitValue;
   lfoValue = lfoTempValue;
   
@@ -201,14 +232,19 @@ void process_lfo_output() {
 
   // Output
   OCR0A = runglerOut;
-  
-  #ifdef S_SINE_OUTPUT
-    lfo8bitValue = pgm_read_byte_near(sineLookup + lfo8bitValue); // Sine output
-  #endif
-  
-  if(lfoFlop) {lfo8bitValue = ~lfo8bitValue;} // ~lfo8bitValue is essentially 255 - lfo8bitValue, but faster
-  OCR0B = lfo8bitValue;
 
+  #ifdef S_DUAL_RUNGLER_OUTPUT
+    OCR0B = runglerOut2;
+  #else
+    // Apply sine wavetable
+    # ifdef S_SINE_OUTPUT
+      lfo8bitValue = pgm_read_byte_near(sineLookup + lfo8bitValue); // Sine output
+    # endif
+    
+    // ~lfo8bitValue is essentially 255 - lfo8bitValue, but faster
+    if(lfoFlop) {lfo8bitValue = ~lfo8bitValue;} 
+    OCR0B = lfo8bitValue;    
+  #endif
   doneReset = false;
 }
   

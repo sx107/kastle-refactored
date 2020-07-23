@@ -35,15 +35,24 @@ Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
 - Save EEPROM: EEPROM Retained
 
 ## Settings in settings.h
-- __S_ADC_FIX__ Enables the software fix for the zener diodes issue (ignores the conversion result and pulls the analog pin to ground briefly every second conversion)
+#### Main LFO settings
 - __S_TRUE_RANDOM__ Trully randomizes the rungler byte every initialization
+- __S_SINE_OUTPUT__ Makes the triangle output sinusoidal by using a look-up table
+- __S_DUAL_RUNGLER_OUTPUT__ Makes the first output a second rungler output instead of tri/sine (Like in DUAL_STEP firmware)
+- __S_SECOND_RUNGLER_PHASESHIFT__ Makes the second rungler output phase-shifted by 90 degrees (Like in DUAL_STEP firmware)
+- __S_DOUBLE_RUNGLER_FIX__ When the square output is connected straight to the LFO reset input, rungler is processed two times each time (once because the LFO direction change triggers it, and once because of the LFO reset) and therefore the actual rungler length is twice as short. Setting this define fixes this issue by making sure that rungler is never processed in two consequent lfo processing steps. In the original LFO firmware this define is "set", but the issue is solved by another means (the square output is asymmetric in the original firmware), therefore this define is enabled by default. My own preference is to _not_ set this define, since double rungler processing behaviour is more "true-to-life" in my opinion and more intuitive.
+
+#### ADC Settings
+- __S_ADC_FIX__ Enables the software fix for the zener diodes issue (ignores the conversion result and pulls the analog pin to ground briefly every second conversion)
+- __S_USE_MOVAVG__ Uses moving average (of size 2) to smooth the ADC conversions. Although the resolution could be upped to 11 bits, it still stays at 10 bits. The response is slowed a tad bit, but the output becomes a little bit smoother and stable.
+
+#### Lfo frequency settings
 - __S_USE_8BIT__ Use only 8bits of ADC resolution
 - __S_FASTER_LFO__ Increases the ADC conversion result for LFO frequency calculation by the amount set in this define. Requiered since the ADC for some reason does not read whole 0-1023 range. If you wish to return to the original frequnecy range, comment this define out (it's faster than setting it to 0)
 - __S_USE_EXP_LOOKUP__ Makes the transition between timer1 prescalers exponential by using a look-up table (before audiorate cap)
-- __S_USE_MOVAVG__ Uses moving average (of size 2) to smooth the ADC conversions. Although the resolution could be upped to 11 bits, it still stays at 10 bits. The response is slowed a tad bit, but the output becomes a little bit smoother and stable.
-- __S_SINE_OUTPUT__ Makes the triangle output sinusoidal by using a look-up table
-- __S_DOUBLE_RUNGLER_FIX__ When the square output is connected straight to the LFO reset input, rungler is processed two times each time (once because the LFO direction change triggers it, and once because of the LFO reset) and therefore the actual rungler length is twice as short. Setting this define fixes this issue by making sure that rungler is never processed in two consequent lfo processing steps. In the original LFO firmware this define is "set", but the issue is solved by another means (the square output is asymmetric in the original firmware), therefore this define is enabled by default. My own preference is to _not_ set this define, since double rungler processing behaviour is more "true-to-life" in my opinion and more intuitive.
 - __S_PRESCALER_CAP__ At which prescaler value the program switches to audiorate mode. Do not set to a value lower than 1.
+
+#### Other settings
 - __S_ISRFREQ_TEST__ Replaces the square output with a square output that indicates the Timer1 ISR frequency. Added only for debugging purposes.
 
 ## Known bugs & issues
