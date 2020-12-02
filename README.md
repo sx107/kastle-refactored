@@ -34,6 +34,12 @@ See .ino file comments.
 - [ ] Custom PCB gerbers
 - [ ] Probably a 3d-printed case
 
+Added 02.12.2020:
+
+- [ ] Figure out firmware/hardware differences between Kastle Drum / Kastle
+- [ ] Refactor Kastle drum firmware
+- [ ] Remaster it and mod it :)
+
 ### Do refactored versions sound exactly the same?
 Almost. I did not modify the synthesis code much in them, though for some reason these firmwares do sound a tad bit different from the original one.
 
