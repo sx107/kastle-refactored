@@ -33,10 +33,10 @@ See .ino file comments.
 - [ ] Custom VCO firmwares refactoring, developing some of my own
 - [ ] Custom PCB gerbers
 - [ ] Probably a 3d-printed case
+- [ ] Eurorack PCB
 
 Added 02.12.2020:
 
-- [ ] Figure out firmware/hardware differences between Kastle Drum / Kastle
 - [ ] Refactor Kastle drum firmware
 - [ ] Remaster it and mod it :)
 

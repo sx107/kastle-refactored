@@ -1,8 +1,13 @@
 # Files description
 - Original_LFO.hex - Original LFO firmware read directly from Kastle 1.5 bought in 2019
-- Original_LFO.hex - Original VCO firmware read directly from Kastle 1.5 bought in 2019
+- Original_VCO.hex - Original VCO firmware read directly from Kastle 1.5 bought in 2019
 
-Both of these firmwares are developed by [Bastl instruments](https://bastl-instruments.com/) and have nothing to do with this project. They are included since the shared under CC-BY-SA original firmware source code doesn't compile properly. Firmwares from the [production repo](https://github.com/bastl-instruments/production/tree/master/attiny) at the moment (22.06.2020) do verify succesfully with the current firmware and probably won't be updated anymore, so these firmwares are included just in case.
+Both of these firmwares are developed by [Bastl instruments](https://bastl-instruments.com/) and have nothing to do with this project. They are included since the shared under CC-BY-SA original firmware source code doesn't compile properly. Firmwares from the [production repo](https://github.com/bastl-instruments/production/tree/master/attirify succesfully with the current firmware and probably won't be updated anymore, so these firmwares are included just in case.
+
+- Original_DrumLFO.hex - Bastle kastle drum LFO firmware
+- Original_DrumVCO.hex - Bastle kastle drum VCO firmware
+
+Copied directly from [Bastl instruments production repo](https://github.com/bastl-instruments/production/tree/master/attiny). Tested, both of these do upload succesfully.
 
 ## Fuses
 Original fuses: lfuse __E2__, hfuse __DF__, efuse __FF__
