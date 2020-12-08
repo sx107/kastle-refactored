@@ -36,11 +36,20 @@ Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
 
 ## Settings in settings.h
 #### Main LFO settings
-- __S_TRUE_RANDOM__ Trully randomizes the rungler byte every initialization
 - __S_SINE_OUTPUT__ Makes the triangle output sinusoidal by using a look-up table
+- __S_INVERT_LFO__ Inverts the triangle/sine output polarity
+- __S_RESET_FALLINGEDGE__ Uses falling edge trigger for the reset instead of rising edge.
+
+#### Square output settings
+- __S_SQUARE_DOUBLEFREQ__ doubles the square output frequency, does _NOT_ double the rungler output frequency
+- __S_INVERT_SQUARE__ inverts the square output polarity; when set, the square output is high on triangle output rising.
+
+#### Rungler settings
+- __S_TRUE_RANDOM__ Trully randomizes the rungler byte every initialization
 - __S_DUAL_RUNGLER_OUTPUT__ Makes the first output a second rungler output instead of tri/sine (Like in DUAL_STEP firmware)
 - __S_SECOND_RUNGLER_PHASESHIFT__ Makes the second rungler output phase-shifted by 90 degrees (Like in DUAL_STEP firmware)
 - __S_DOUBLE_RUNGLER_FIX__ When the square output is connected straight to the LFO reset input, rungler is processed two times each time (once because the LFO direction change triggers it, and once because of the LFO reset) and therefore the actual rungler length is twice as short. Setting this define fixes this issue by making sure that rungler is never processed in two consequent lfo processing steps. In the original LFO firmware this define is "set", but the issue is solved by another means (the square output is asymmetric in the original firmware), therefore this define is enabled by default. My own preference is to _not_ set this define, since double rungler processing behaviour is more "true-to-life" in my opinion and more intuitive.
+
 
 #### ADC Settings
 - __S_ADC_FIX__ Enables the software fix for the zener diodes issue (ignores the conversion result and pulls the analog pin to ground briefly every second conversion)
@@ -52,22 +61,49 @@ Compile options (with AttinyCore 1.3.3, Arduino IDE 1.8.10):
 - __S_USE_EXP_LOOKUP__ Makes the transition between timer1 prescalers exponential by using a look-up table (before audiorate cap)
 - __S_PRESCALER_CAP__ At which prescaler value the program switches to audiorate mode. Do not set to a value lower than 1.
 
-#### Other settings
-- __S_ISRFREQ_TEST__ Replaces the square output with a square output that indicates the Timer1 ISR frequency. Added only for debugging purposes.
-
 ## Known bugs & issues
 - Probably not an issue at all: if you connect the square output to the LFO rate modulation and set the LFO rate modulation knob to max, a rising saw that is produced on the LFO Tri output clicks every period.
 
 ## TODO
 - Find and fix bugs
 - Maybe: move all look-up tables to a separate file?
-- Add DUAL_STEP firmware capabilities in this one by utilizing defines
 - It would be much better if INT0 ISR would be used instead of the PCINT0 ISR for reset, though it requires the schematic to be changed (PINB2 and PINB3 have to be swapped)
 
 ## Bad ideas
 - Replacing lfo flopping by simply computing (255-lfoValue) with PWM inversion bit. This is a bad idea, because such a solution causes glitches due to a race condition between setting the OCR0B and COM0B0 (do we invert the PWM output first or set it to the right value first?)
 - Making the EEPROM a bit more redundant (CRC checks and stuff). Totaly unnecessary.
 - Moving average and histeresis: LFO implementation requires very fast response to ADC value changes. Otherwise, for example, connecting the square output to the LFO rate modulation (which is set at max) does not produce a proper rising saw wave at the triangle output. Huge moving average filters are slow, and require fast ADC speeds. It's just too much for the poor Attiny85.
+
+## Square output logic and saw output
+In the original firmware, reset is set to rising edge detection (when reset input switches from _low_ to _high_, LFO resets) AND the square output polarity is as follows: _high_ when triangle output is falling and _low_ when it is rising. There is a problem, though: in such a polarity simply connecting the square output to the reset input does not produce a saw output instead of triangle, since LFO is reset to it's falling stage only when it already naturally switches to it.
+In the original firmware this problem is solved by implementing a short high pulse when LFO changes direction and making the square output slightly asymmetric (see pic, the short pulse is marked with a red circle):
+
+![Square output in the original firmware](readme_images/sq_orig.png)
+
+In my opinion, this solution is far from perfect; furthermore, it is rather hard to implement this short pulse in this firmware without making the code nearly unreadable. Two other options exist:
+
+- Invert the square output, __S_INVERT_SQUARE__ option;
+- Make the reset detect the falling edge, not rising edge, __S_RESET_FALLINGEDGE__ option.
+
+Setting either of these options (but not both) will return the support for the saw output. The second one is a bit unintuitive, since most gear expects a rising edge reset, but it allows you to use the same square output polarity as in the original firmware. Therefore, by default __S_INVERT_SQUARE__ is set and __S_RESET_FALLINGEDGE__ is not.
+In previous commits (when both of these options did not exist) the square output polarity was as in the original firmware (__S_INVERT_SQUARE__ not set) and falling edge trigger was used for the reset.
+
+Oscilloscope screenshots with and without __S_INVERT_SQUARE__ are shown below.
+
+Original square polarity (__S_INVERT_SQUARE__ not set):
+![Original square output polarity](readme_images/sq_noinv.png)
+
+Inverted square polarity:
+![Inverted square output polarity](readme_images/sq_inv.png)
+
+In case if you want a rising saw output instead of a falling one, changing __S_INVERT_SQUARE__ or __S_RESET_FALLINGEDGE__ won't change anything (they can only entierly disable the saw output with reset connected to the square output). But there are two other options:
+- If square output polarity is not enabled (__S_INVERT_SQUARE__ not set), you can connect the square output to the LFO speed modulation output and set the LFO speed modulation knob to max.
+- Or you can set the __S_INVERT_LFO__ define. On reset then the triangle output will be reset to the rising state instead of falling.
+
+The __S_SQUARE_DOUBLEFREQ__ option doubles the square output frequency. Now, since both falling and rising triangle LFO outputs start with a rising edge on the square output in the original polarity, setting either __S_INVERT_SQUARE__ or __S_RESET_FALLINGEDGE__ is not required for the saw output support. Notice that the rungler output frequency stays the same.
+This option was added after the release of bastle kastle drum, since in it the square output frequency is doubled, though further changes in the new bastle kastle drum LFO firmware are not implemented yet as of this commit and probably will be implemented in a separate firmware remaster project.
+
+![Doubled square output frequency](readme_images/sq_double.png)
 
 ## Theoretical LFO frequency explanation (or how lfo_set_frequency works)
 

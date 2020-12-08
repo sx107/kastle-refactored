@@ -30,6 +30,7 @@ volatile bool doneReset = false;  // Has the reset ISR just issued a reset?
   volatile bool doneRungler = false; // Has rungler been processed in the previous process_lfo_output() call?
 #endif
 
+// LUTS
 // LUT for LFO frequencies before the audiorate. See readme.md.
 // f(x) = 128 * 2^(x / 127.721) for x in [0, 127]
 #ifdef S_USE_EXP_LOOKUP
@@ -43,6 +44,15 @@ const uint8_t PROGMEM expLookup2[] = {253, 250, 248, 245, 242, 240, 237, 234, 23
 // Sine table
 #ifdef S_SINE_OUTPUT
   const uint8_t PROGMEM sineLookup[] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 23, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47, 48, 49, 51, 52, 53, 54, 56, 57, 58, 60, 61, 62, 64, 65, 66, 68, 69, 71, 72, 73, 75, 76, 78, 79, 81, 82, 84, 85, 87, 88, 90, 91, 93, 94, 96, 97, 99, 100, 102, 103, 105, 106, 108, 109, 111, 113, 114, 116, 117, 119, 120, 122, 124, 125, 127, 128, 130, 131, 133, 135, 136, 138, 139, 141, 142, 144, 146, 147, 149, 150, 152, 153, 155, 156, 158, 159, 161, 162, 164, 165, 167, 168, 170, 171, 173, 174, 176, 177, 179, 180, 182, 183, 184, 186, 187, 189, 190, 191, 193, 194, 195, 197, 198, 199, 201, 202, 203, 204, 206, 207, 208, 209, 210, 212, 213, 214, 215, 216, 217, 218, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 232, 233, 234, 235, 236, 237, 238, 238, 239, 240, 241, 241, 242, 243, 243, 244, 245, 245, 246, 246, 247, 247, 248, 249, 249, 249, 250, 250, 251, 251, 252, 252, 252, 253, 253, 253, 253, 254, 254, 254, 254, 254, 255, 255, 255, 255, 255, 255, 255, 255};
+#endif
+
+//For the square inversion. Yeah, stupid solution, I know...
+#ifndef S_INVERT_SQUARE
+  #define SQUARE_HIGH 1
+  #define SQUARE_LOW 0
+#else
+  #define SQUARE_HIGH 0
+  #define SQUARE_LOW 1
 #endif
 
 void lfo_init() {
@@ -175,11 +185,19 @@ void process_lfo_output() {
   static uint8_t lfo8bitPrevValue = 0xFF; // To detect overflows
   
   uint8_t lfo8bitValue = lfoTempValue >> 8;
+  bool forceSquareHigh = false;
   
   if(lfo8bitValue < lfo8bitPrevValue || doneResetTemp) {
     // Invert the LFO output, we don't need to reset the LFO value (it resets itselfs by overflowing)
-    // If this interrupt was triggered by a reset, then we DONT need to flop the value
-    if(!doneResetTemp) {lfoFlop = !lfoFlop;} 
+    // If this interrupt was triggered by a reset, then we DONT need to flop the inversion value
+    if(!doneResetTemp) {lfoFlop = !lfoFlop;}
+
+    //Used for the short pulse if lfo output is flopped. See README.md for the explanation of reason behind this.
+    #ifdef S_SQUARE_SHORT_PULSE
+      forceSquareHigh = true;
+    #endif
+
+    
     // Perform rungler processing only if it hasn't been performed in the previous lfo_process_output() call
     // This is done to avoid double rungler processing when square output is connected to the reset
     // If S_DOUBLE_RUNGLER_FIX is not set, then rungler is processed in any case
@@ -224,26 +242,36 @@ void process_lfo_output() {
   lfo8bitPrevValue = lfo8bitValue;
   lfoValue = lfoTempValue;
   
-  // Square output
-  #ifndef S_ISRFREQ_TEST
-    if (lfoFlop) {bitWrite(PORTB, PINB2, 1);}
-    else {bitWrite(PORTB, PINB2, 0);}
+  // Square output: either doubled frequency or synced with main LFO
+  // See code above for SQUARE_HIGH and SQUARE_LOW
+  #ifndef S_SQUARE_DOUBLEFREQ
+	  if (lfoFlop || forceSquareHigh) {bitWrite(PORTB, PINB2, SQUARE_HIGH);}  // I just hope that if S_SQUARE_SHORT_PULSE is not set, optimizer 
+	  else {bitWrite(PORTB, PINB2, SQUARE_LOW);}                              // will through away the forceSquareHigh (it will be always false)
+  #else
+	  if (lfo8bitValue < 128) {bitWrite(PORTB, PINB2, SQUARE_HIGH);}
+	  else {bitWrite(PORTB, PINB2, SQUARE_LOW);}	  
   #endif
 
   // Output
   OCR0A = runglerOut;
 
+  // Second rungler output if needed
   #ifdef S_DUAL_RUNGLER_OUTPUT
     OCR0B = runglerOut2;
   #else
-    // Apply sine wavetable
+    // If the second output is NOT rungler: output tri or sine
+    // Apply sine wavetable if S_SINE_OUTPUT is set
     # ifdef S_SINE_OUTPUT
       lfo8bitValue = pgm_read_byte_near(sineLookup + lfo8bitValue); // Sine output
     # endif
     
     // ~lfo8bitValue is essentially 255 - lfo8bitValue, but faster
-    if(lfoFlop) {lfo8bitValue = ~lfo8bitValue;} 
-    OCR0B = lfo8bitValue;    
+    #ifndef S_INVERT_LFO
+      if(lfoFlop) {lfo8bitValue = ~lfo8bitValue;}
+    #else
+      if(!lfoFlop) {lfo8bitValue = ~lfo8bitValue;}
+    #endif
+    OCR0B = lfo8bitValue;
   #endif
   doneReset = false;
 }
@@ -251,7 +279,13 @@ void process_lfo_output() {
 
 // Reset interrupt
 ISR(PCINT0_vect) {
-  if(bitRead(PINB, PINB3)) {return;}
+  #ifndef S_RESET_FALLINGEDGE
+    // Rising edge
+    if (!bitRead(PINB, PINB3)) {return;}
+  #else
+    // Falling edge
+    if (bitRead(PINB, PINB3)) {return;}
+  #endif
 
   // Reset everything
   TCNT1 = 0;
