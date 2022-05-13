@@ -81,7 +81,8 @@ void adc_init() {
   // ADC Sample rate is 1MHz / 13.5 = 74.1 kHz (remember that it is also limited by the ADC ISR execution time and should be divided by 2)
   ADMUX  = 0;
   bitWrite(ADCSRA,ADEN,1);                        // ADC enable
-  ADCSRA |= bit(ADPS0) | bit(ADPS1); // Prescaler : 1/8
+  // ADCSRA |= bit(ADPS0) | bit(ADPS1); // Prescaler : 1/8
+  ADCSRA |= bit(ADPS2); // Prescaler : 1/16
   bitWrite(ADCSRA,ADIE,1);                        // Enable conversion finished interupt
 
 }

@@ -1,6 +1,8 @@
 # Files description
-- Original_LFO.hex - Original LFO firmware read directly from Kastle 1.5 bought in 2019
-- Original_VCO.hex - Original VCO firmware read directly from Kastle 1.5 bought in 2019
+- Original_LFO_1.2.hex - Original LFO firmware read directly from Kastle 1.2
+- Original_VCO_1.2.hex - Original VCO firmware read directly from Kastle 1.2
+- Original_LFO_1.5.hex - Original LFO firmware read directly from Kastle 1.5 bought in 2019
+- Original_VCO_1.5.hex - Original VCO firmware read directly from Kastle 1.5 bought in 2019
 
 Both of these firmwares are developed by [Bastl instruments](https://bastl-instruments.com/) and have nothing to do with this project. They are included since the shared under CC-BY-SA original firmware source code doesn't compile properly. Firmwares from the [production repo](https://github.com/bastl-instruments/production/tree/master/attirify succesfully with the current firmware and probably won't be updated anymore, so these firmwares are included just in case.
 
